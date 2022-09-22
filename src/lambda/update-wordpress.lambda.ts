@@ -1,70 +1,41 @@
 import { PrintulEvent } from '../types/printful-event.type'
 import * as log from 'lambda-log'
-import { generateTrackingId, transformPfCourierToWpCourier, transformPfItemsToWpItems } from '../tools/printful-to-wp.tool'
-import { getWordpressOrder, updateMetadataWordpressOrder } from '../client/wordpress.client'
-import { MetaData, MetaDataValue } from '../types/wc-metadata.type'
+import { extractShippedQuantityFromTracking, qtyLineToTotal, transformPfCourierToWpCourier, transformPfItemsToWpLineItems } from '../tools/printful-to-wp.tool'
+import { OrderStatus, ReplaceTracking, WpTracking } from '../types/tracking.type'
+import { getWordpressOrder, getWordpressTracking, updateWordpressTracking } from '../client/wordpress.client'
 
 export async function handler(event: PrintulEvent): Promise<any> {
-  const afterShipMetadataItems = '_aftership_tracking_items'
-  const afterShipMetadataNumber = '_aftership_tracking_number'
-  const afterShipMetadataProvider = '_aftership_tracking_provider_name'
   log.info(event.eventId)
   const orderId = event.data.order.external_id
   if (orderId === null) {
     throw Error(`No wp order to process ${event.eventId}`)
   }
 
-  const oldOrder = await getWordpressOrder(orderId)
-  const oldMetadata: MetaData | undefined = oldOrder.meta_data.find((i: MetaData) => {
-    return i.key === afterShipMetadataItems
-  })
-
-  const trackingNumber = event.data.shipment.tracking_number
-  const carrier = transformPfCourierToWpCourier(event.data.shipment.carrier)
-  const items = transformPfItemsToWpItems(event.data.shipment.items, event.data.order.items)
-  const trackingId = generateTrackingId(carrier, trackingNumber)
-  const additionalFields = {
-    account_number: '',
-    key: '',
-    postal_code: '',
-    ship_date: '',
-    destination_country: '',
-    state: '',
+  const wpOrder = await getWordpressOrder(orderId)
+  const { totalItemsInOrder, skuLine, qtyLine } = transformPfItemsToWpLineItems(event.data.shipment.items, event.data.order.items, wpOrder)
+  const basicTracking: WpTracking = {
+    tracking_provider: transformPfCourierToWpCourier(event.data.shipment.carrier),
+    tracking_number: event.data.shipment.tracking_number,
+    replace_tracking: ReplaceTracking.no,
+    status_shipped: OrderStatus.partiallyShipped,
   }
 
-  const metadataValue: MetaDataValue = {
-    tracking_id: trackingId,
-    tracking_number: trackingNumber,
-    slug: carrier,
-    additional_fields: additionalFields,
-    line_items: items,
-    metrics: {
-      created_at: new Date(),
-      updated_at: new Date(),
-    },
-  }
-
-  if (oldMetadata) {
-    if (typeof oldMetadata.value !== 'string') {
-      oldMetadata.value.push(metadataValue)
-      await updateMetadataWordpressOrder(orderId, { meta_data: [oldMetadata] })
-    }
+  if (skuLine.length == 0) {
+    // No items to track, add basic tracking
+    await updateWordpressTracking(orderId, basicTracking)
   } else {
-    const newMetadataItems: MetaData = {
-      key: afterShipMetadataItems,
-      value: [metadataValue],
+    // Get current tracking to check if all items are shipped
+    const totalShipped = extractShippedQuantityFromTracking(await getWordpressTracking(orderId)) + qtyLineToTotal(qtyLine)
+    const orderStatus: OrderStatus = totalShipped >= totalItemsInOrder ? OrderStatus.shipped : OrderStatus.partiallyShipped
+    const newTracking: WpTracking = {
+      ...basicTracking,
+      status_shipped: orderStatus,
+      qty: qtyLine,
+      sku: skuLine,
     }
 
-    const newMetadataNumber: MetaData = {
-      key: afterShipMetadataNumber,
-      value: trackingNumber,
-    }
-
-    const newMetadataProvider: MetaData = {
-      key: afterShipMetadataProvider,
-      value: carrier,
-    }
-
-    await updateMetadataWordpressOrder(orderId, { meta_data: [newMetadataItems, newMetadataNumber, newMetadataProvider] })
+    await updateWordpressTracking(orderId, newTracking)
   }
+
+  log.info('Finishing')
 }

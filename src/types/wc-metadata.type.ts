@@ -7,8 +7,14 @@ export interface AdditionalFields {
   state: string
 }
 
+export interface MetadataLineItem {
+  id: number
+  quantity: number
+}
+
 export interface LineItem {
   id: number
+  sku: string | null
   quantity: number
 }
 
@@ -22,7 +28,7 @@ export interface MetaDataValue {
   tracking_number: string
   slug: string
   additional_fields: AdditionalFields
-  line_items: LineItem[]
+  line_items: MetadataLineItem[]
   metrics: Metrics
 }
 
@@ -31,6 +37,8 @@ export interface MetaData {
   value: MetaDataValue[] | string
 }
 
-export interface WooCommerceMetadata {
-  meta_data: MetaData[]
+export interface WpOrder {
+  meta_data?: MetaData[]
+  status?: string
+  line_items?: LineItem[]
 }

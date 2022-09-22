@@ -2,6 +2,7 @@ import { APIGatewayEvent, APIGatewayProxyResult } from 'aws-lambda'
 import { InvocationType, InvokeCommandInput, InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda'
 import { v4 as uuidv4 } from 'uuid'
 import * as log from 'lambda-log'
+import { PrintulEvent } from '../types/printful-event.type'
 
 export async function handler(event: APIGatewayEvent): Promise<APIGatewayProxyResult> {
   if (event.httpMethod !== 'POST') {
@@ -18,7 +19,14 @@ export async function handler(event: APIGatewayEvent): Promise<APIGatewayProxyRe
     }
   }
 
-  const printfulEvent = { ...JSON.parse(event.body), eventId: uuidv4() }
+  const printfulEvent: PrintulEvent = { ...JSON.parse(event.body), eventId: uuidv4() }
+  if (printfulEvent.type === undefined || printfulEvent.type !== 'package_shipped') {
+    return {
+      statusCode: 400,
+      body: 'Event type not allowed',
+    }
+  }
+
   const client = new LambdaClient({})
   const dbLambdaParams: InvokeCommandInput = {
     FunctionName: process.env.DB_LAMBDA as string,

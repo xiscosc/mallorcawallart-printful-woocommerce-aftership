@@ -1,16 +1,20 @@
 export interface ShippedItem {
   item_id: number
   quantity: number
+  picked: number
+  printed: number
+  steps: any[]
 }
 
 export interface Shipment {
   id: number
   carrier: string
+  can_change_hold: boolean
   service: string
   tracking_number: string
   tracking_url: string
   created: number
-  ship_date: Date
+  ship_date: Date | string
   shipped_at: number
   reshipment: boolean
   items: ShippedItem[]
@@ -20,16 +24,16 @@ export interface Recipient {
   name: string
   company: string
   address1: string
-  address2: string
+  address2: string | null
   city: string
-  state_code: string
-  state_name: string
-  country_code: string
-  country_name: string
-  zip: number
+  state_code: string | null
+  state_name: string | null
+  country_code: string | null
+  country_name: string | null
+  zip: number | string
   phone: string
-  email: string
-  tax_number: string
+  email: string | null
+  tax_number: string | null
 }
 
 export interface Product {
@@ -55,12 +59,13 @@ export interface Position {
 }
 
 export interface File {
+  created: number
   type: string
-  url: string
+  url: string | null
   options: Option[]
   filename: string
   visible: boolean
-  position: Position
+  position: Position | null
 }
 
 export interface Option2 {
@@ -70,14 +75,13 @@ export interface Option2 {
 
 export interface Item {
   id: number
-  external_id: string
+  external_id: string | null
   variant_id: number
-  sync_variant_id: number
-  external_variant_id: string
-  warehouse_product_variant_id: number
+  sync_variant_id: number | null
+  external_variant_id: string | null
   quantity: number
   price: string
-  retail_price: string
+  retail_price: string | null
   name: string
   product: Product
   files: File[]
@@ -89,12 +93,12 @@ export interface Item {
 
 export interface RetailCosts {
   currency: string
-  subtotal: string
-  discount: string
-  shipping: string
-  tax: string
-  vat: string
-  total: string
+  subtotal: string | null
+  discount: string | null
+  shipping: string | null
+  tax: string | null
+  vat: string | null
+  total: string | null
 }
 
 export interface Gift {
@@ -110,8 +114,8 @@ export interface Order {
   recipient: Recipient
   items: Item[]
   retail_costs: RetailCosts
-  gift: Gift
-  packing_slip: PackingSlip
+  gift: Gift | null
+  packing_slip: PackingSlip | null
 }
 
 export interface Data {
