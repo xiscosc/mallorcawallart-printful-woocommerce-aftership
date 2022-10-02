@@ -25,7 +25,9 @@ export async function handler(event: PrintulEvent): Promise<any> {
     await updateWordpressTracking(orderId, basicTracking)
   } else {
     // Get current tracking to check if all items are shipped
-    const totalShipped = extractShippedQuantityFromTracking(await getWordpressTracking(orderId)) + qtyLineToTotal(qtyLine)
+    const alreadyShippedCount = extractShippedQuantityFromTracking(await getWordpressTracking(orderId))
+    const shippedOnThisOrderCount = qtyLineToTotal(qtyLine)
+    const totalShipped = alreadyShippedCount + shippedOnThisOrderCount
     const orderStatus: OrderStatus = totalShipped >= totalItemsInOrder ? OrderStatus.shipped : OrderStatus.partiallyShipped
     const newTracking: WpTracking = {
       ...basicTracking,

@@ -5,6 +5,12 @@ export interface WpTracking {
   replace_tracking: ReplaceTracking
   sku?: string
   qty?: string
+  products_list?: ShippedProduct[]
+}
+
+export interface ShippedProduct {
+  product: string
+  qty: string
 }
 
 export enum OrderStatus {

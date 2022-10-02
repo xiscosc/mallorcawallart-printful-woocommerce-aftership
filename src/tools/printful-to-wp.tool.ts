@@ -76,10 +76,20 @@ export function qtyLineToTotal(line: string): number {
   return line.split(',').reduce((sum, current) => sum + +current, 0)
 }
 
-export function extractShippedQuantityFromTracking(tracking: WpTracking[]): number {
-  return tracking.reduce((sum, current) => {
-    if (current.sku) {
-      return sum + qtyLineToTotal(current.sku)
+export function extractShippedQuantityFromTracking(trackings: WpTracking[]): number {
+  return trackings.reduce((sum, current) => {
+    return sum + getShippedNumberFromTracking(current)
+  }, 0)
+}
+
+function getShippedNumberFromTracking(tracking: WpTracking): number {
+  if (tracking.products_list == undefined) {
+    return 0
+  }
+
+  return tracking.products_list.reduce((sum, current) => {
+    if (current.qty) {
+      return sum + +current.qty
     } else {
       return sum
     }
